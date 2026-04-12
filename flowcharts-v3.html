@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户认证与支付流程图 V3</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 40px;
+            color: #f8fafc;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        .diagram-section {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 40px;
+            overflow-x: auto;
+        }
+        .diagram-title {
+            font-size: 20px;
+            color: #38bdf8;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #334155;
+        }
+        .flowchart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            min-width: 1000px;
+            padding: 20px 0;
+        }
+        .node {
+            position: relative;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+            min-width: 140px;
+            max-width: 220px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .node.start, .node.end { border-radius: 50px; }
+        .node.start { background: #22c55e; color: #052e16; font-weight: bold; }
+        .node.end { background: #ef4444; color: #450a0a; font-weight: bold; }
+        .node.process { background: #3b82f6; color: #1e3a5f; }
+        .node.decision { 
+            background: #f59e0b; 
+            color: #451a03;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            padding: 30px 40px;
+            min-width: 120px;
+        }
+        .node.success { background: #10b981; color: #022c22; }
+        .node.error { background: #dc2626; color: #450a0a; }
+        .node.api { background: #8b5cf6; color: #1e1b4b; }
+        .node.user-action { background: #06b6d4; color: #083344; }
+        .node.external { background: #ec4899; color: #500724; }
+        .node.guest { background: #f97316; color: #431407; }
+        .node.reset { background: #14b8a6; color: #042f2e; }
+        .connector {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #64748b;
+            font-size: 12px;
+        }
+        .line {
+            width: 2px;
+            height: 30px;
+            background: linear-gradient(to bottom, #64748b, #94a3b8);
+        }
+        .branch {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        .branch-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .branch-label {
+            background: #334155;
+            color: #e2e8f0;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .branch-label.yes { background: #22c55e; color: #052e16; }
+        .branch-label.no { background: #ef4444; color: #450a0a; }
+        .branch-label.guest { background: #f97316; color: #431407; }
+        .branch-label.reset { background: #14b8a6; color: #042f2e; }
+        .sub-flow {
+            background: #0f172a;
+            border: 1px dashed #334155;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 10px;
+        }
+        .sub-flow-title {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        .sub-flow .node {
+            font-size: 12px;
+            padding: 8px 16px;
+            min-width: 100px;
+        }
+        .exception-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .exception-table th,
+        .exception-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+        .exception-table th {
+            background: #0f172a;
+            color: #38bdf8;
+            font-weight: 600;
+        }
+        .exception-table tr:hover { background: #0f172a; }
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .status-badge.retry { background: #f59e0b; color: #451a03; }
+        .status-badge.notify { background: #8b5cf6; color: #1e1b4b; }
+        .status-badge.rollback { background: #ef4444; color: #450a0a; }
+        .status-badge.pending { background: #06b6d4; color: #083344; }
+        .status-badge.guest { background: #f97316; color: #431407; }
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 900px) {
+            .two-columns { grid-template-columns: 1fr; }
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 30px;
+            padding: 16px;
+            background: #0f172a;
+            border-radius: 8px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .highlight-box strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        .highlight-box.green {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+        .highlight-box.red {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 用户认证与支付系统流程图 V3</h1>
+        
+        <!-- 流程图一：邮箱注册登录退出 -->
+        <div class="diagram-section">
+            <h2 class="diagram-title">📧 流程图一：邮箱注册 / 登录 / 退出</h2>
+            
+            <div class="highlight-box green">
+                <strong>🆕 变更说明</strong>
+                1. 密码重试不设限（去掉3次限制）<br>
+                2. 新增「忘记密码」流程：邮箱验证 → 发送重置链接 → 重置密码
+            </div>
+            
+            <div class="flowchart">
+                <!-- 开始 -->
+                <div class="node start">🚀 开始</div>
+                <div class="connector"><div class="line"></div></div>
+                
+                <!-- 选择操作 -->
+                <div class="node process">选择操作<br><small>(登录/注册/退出/忘记密码)</small></div>
+                <div class="connector"><div class="line"></div></div>
+                
+                <!-- 判断操作类型 -->
+                <div class="node decision" style="padding: 25px 35px;">操作类型?</div>
+                
+                <div class="connector"><div class="line"></div></div>
+                
+                <div class="branch">
+                    <!-- 登录分支 -->
+                    <div class="branch-item">
+                        <div class="branch-label yes">登录</div>
+                        <div class="sub-flow">
+                            <div class="sub-flow-title">📧 邮箱登录流程</div>
+                            <div class="node user-action">输入邮箱</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node decision" style="padding: 20px 30px;">登录方式?</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="branch" style="gap:20px">
+                                <div class="branch-item">
+                                    <div class="branch-label yes">验证码</div>
+                                    <div class="node process">发送邮件验证码<br><small>(60秒防刷)</small></div>
+                                    <div class="connector"><div class="line"></div></div>
+                                    <div class="node user-action">输入验证码</div>
+                                </div>
+                                <div class="branch-item">
+                                    <div class="branch-label yes">密码</div>
+                                    <div class="node user-action">输入密码</div>
+                                </div>
+                            </div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">验证身份<br><small>校验验证码/密码</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node decision" style="padding: 20px 30px;">验证通过?</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node api">JWT Token 生成<br><small>(access + refresh)</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node success">✅ 登录成功<br><small>跳转首页</small></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 注册分支 -->
+                    <div class="branch-item">
+                        <div class="branch-label yes">注册</div>
+                        <div class="sub-flow">
+                            <div class="sub-flow-title">📧 邮箱注册流程</div>
+                            <div class="node user-action">填写注册信息<br><small>邮箱 + 密码 + 昵称</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">参数校验<br><small>邮箱格式/密码强度</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node decision" style="padding: 20px 30px;">邮箱已注册?</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">发送邮件验证码<br><small>60秒防刷</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node user-action">输入邮箱验证码</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node decision" style="padding: 20px 30px;">验证码正确?</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">创建用户记录<br><small>+ 初始化空余额</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node success">✅ 注册成功<br><small>自动登录</small></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 忘记密码分支 -->
+                    <div class="branch-item">
+                        <div class="branch-label reset">🔑 忘记密码</div>
+                        <div class="sub-flow">
+                            <div class="sub-flow-title">🔑 重置密码流程</div>
+                            <div class="node user-action">输入注册邮箱</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">邮箱格式校验</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node decision" style="padding: 20px 30px;">邮箱存在?</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node error" style="font-size:12px">❌ 邮箱未注册<br><small>提示检查或注册</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">生成重置Token<br><small>有效期30分钟</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node reset">发送重置邮件<br><small>含重置链接</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node user-action">用户登录邮箱<br><small>点击重置链接</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node decision" style="padding: 20px 30px;">Token有效?<br><small>未过期</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node error" style="font-size:12px">❌ 链接已过期<br><small>提示重新申请</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node user-action">输入新密码<br><small>+ 确认密码</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">密码强度校验</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node api">更新密码<br><small>加密存储</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">使Token失效<br><small>防止重复使用</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node success">✅ 密码重置成功<br><small>跳转登录页</small></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 退出分支 -->
+                    <div class="branch-item">
+                        <div class="branch-label yes">退出</div>
+                        <div class="sub-flow">
+                            <div class="sub-flow-title">退出流程</div>
+                            <div class="node user-action">点击退出按钮</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">清除本地Token<br><small>+ 清理缓存</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node success">✅ 退出成功<br><small>跳转首页</small></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="connector"><div class="line" style="margin-top:30px"></div></div>
+                
+                <!-- 异常处理 -->
+                <div class="node error">❌ 操作失败<br><small>显示错误信息</small></div>
+                <div class="connector"><div class="line"></div></div>
+                <div class="node end">🔚 结束</div>
+            </div>
+            
+            <!-- 异常处理表格 -->
+            <div class="two-columns" style="margin-top: 30px;">
+                <div>
+                    <h3 style="color:#38bdf8;margin-bottom:12px;font-size:16px">⚠️ 登录异常处理</h3>
+                    <table class="exception-table">
+                        <thead>
+                            <tr><th>异常情况</th><th>处理方案</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>邮箱不存在</td><td><span class="status-badge notify">提示</span> 引导用户注册</td></tr>
+                            <tr><td>密码错误</td><td><span class="status-badge retry">重试</span> 可无限次重试</td></tr>
+                            <tr><td>验证码错误/过期</td><td><span class="status-badge retry">重试</span> 提示重新获取</td></tr>
+                            <tr><td>账号被封禁</td><td><span class="status-badge notify">提示</span> 显示封禁原因</td></tr>
+                            <tr><td>频繁登录</td><td><span class="status-badge pending">限流</span> 锁定5分钟</td></tr>
+                            <tr><td>邮件发送失败</td><td><span class="status-badge retry">重试</span> 切换邮件服务商</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div>
+                    <h3 style="color:#38bdf8;margin-bottom:12px;font-size:16px">⚠️ 重置密码异常处理</h3>
+                    <table class="exception-table">
+                        <thead>
+                            <tr><th>异常情况</th><th>处理方案</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>邮箱未注册</td><td><span class="status-badge notify">提示</span> 引导用户注册</td></tr>
+                            <tr><td>邮箱格式错误</td><td><span class="status-badge notify">提示</span> 显示正确格式</td></tr>
+                            <tr><td>重置Token过期</td><td><span class="status-badge notify">提示</span> 重新申请重置</td></tr>
+                            <tr><td>Token已被使用</td><td><span class="status-badge notify">提示</span> 链接已失效</td></tr>
+                            <tr><td>两次密码不一致</td><td><span class="status-badge notify">提示</span> 重新输入</td></tr>
+                            <tr><td>密码不符合要求</td><td><span class="status-badge notify">提示</span> 显示密码要求</td></tr>
+                            <tr><td>重置邮件发送失败</td><td><span class="status-badge retry">重试</span> 切换邮件通道</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 流程图二：游客购买 -->
+        <div class="diagram-section">
+            <h2 class="diagram-title">👤 流程图二：游客购买（免登录）</h2>
+            
+            <div class="highlight-box red">
+                <strong>🆕 重要变更</strong>
+                无余额系统！用户选择商品后直接拉起第三方支付（微信/支付宝），支付完成后即完成交易。
+            </div>
+            
+            <div class="flowchart">
+                <!-- 开始 -->
+                <div class="node start">🚀 开始</div>
+                <div class="connector"><div class="line"></div></div>
+                
+                <!-- 进入商城 -->
+                <div class="node user-action">进入商品列表</div>
+                <div class="connector"><div class="line"></div></div>
+                
+                <!-- 选择商品 -->
+                <div class="node process">浏览/选择商品</div>
+                <div class="connector"><div class="line"></div></div>
+                
+                <!-- 判断登录状态 -->
+                <div class="node decision" style="padding: 25px 35px;">已登录?</div>
+                
+                <div class="connector"><div class="line"></div></div>
+                
+                <div class="branch">
+                    <!-- 已登录分支 -->
+                    <div class="branch-item">
+                        <div class="branch-label yes">✅ 已登录</div>
+                        <div class="sub-flow">
+                            <div class="sub-flow-title">会员购买</div>
+                            <div class="node process">使用用户ID<br><small>关联订单</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">选择支付方式<br><small>微信/支付宝</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node success">✅ 创建订单<br><small>user_id + order_no</small></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 游客分支 -->
+                    <div class="branch-item">
+                        <div class="branch-label guest">👤 游客</div>
+                        <div class="sub-flow">
+                            <div class="sub-flow-title">游客购买</div>
+                            <div class="node guest">进入游客购买模式<br><small>无需登录</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node user-action">填写联系邮箱<br><small>作为订单凭证</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">邮箱格式校验</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node decision" style="padding: 20px 30px;">邮箱有效?</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node error" style="font-size:12px">❌ 提示邮箱格式错误</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">选择支付方式<br><small>微信/支付宝</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node guest">创建游客订单<br><small>email + order_no<br>user_id = NULL</small></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="connector"><div class="line" style="margin-top:20px"></div></div>
+                
+                <!-- 支付流程 -->
+                <div class="node external">📱 调用第三方支付<br><small>微信/支付宝</small></div>
+                <div class="connector"><div class="line"></div></div>
+                <div class="node user-action">用户完成支付</div>
+                <div class="connector"><div class="line"></div></div>
+                <div class="node decision" style="padding: 25px 35px;">支付成功?</div>
+                
+                <div class="branch" style="gap:30px">
+                    <div class="branch-item">
+                        <div class="branch-label yes">✅ 成功</div>
+                        <div class="node process">更新订单状态<br><small>PAID</small></div>
+                        <div class="connector"><div class="line"></div></div>
+                        <div class="node guest">发送订单邮件<br><small>含订单号+查询链接</small></div>
+                        <div class="connector"><div class="line"></div></div>
+                        <div class="node success">✅ 显示支付成功<br><small>展示订单号</small></div>
+                    </div>
+                    <div class="branch-item">
+                        <div class="branch-label no">❌ 失败</div>
+                        <div class="node error">更新订单状态<br><small>FAILED</small></div>
+                        <div class="connector"><div class="line"></div></div>
+                        <div class="node error">❌ 显示失败原因<br><small>可重新支付</small></div>
+                    </div>
+                </div>
+                
+                <div class="connector"><div class="line" style="margin-top:20px"></div></div>
+                <div class="node end">🔚 结束</div>
+            </div>
+            
+            <!-- 游客查单流程 -->
+            <div style="margin-top: 30px; padding: 20px; background: #0f172a; border-radius: 12px;">
+                <h3 style="color:#f97316;margin-bottom:16px;font-size:16px">🔍 游客订单查询流程</h3>
+                <div class="flowchart" style="min-width:auto">
+                    <div class="branch">
+                        <div class="branch-item">
+                            <div class="node user-action">访问查单页面</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node user-action">输入邮箱</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node process">发送验证码<br><small>到邮箱</small></div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node user-action">输入验证码</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node api">验证邮箱+验证码</div>
+                            <div class="connector"><div class="line"></div></div>
+                            <div class="node success">✅ 显示订单列表<br><small>该邮箱所有订单</small></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 游客购买异常处理 -->
+            <div style="margin-top: 30px;">
+                <h3 style="color:#38bdf8;margin-bottom:16px;font-size:16px">⚠️ 游客购买异常处理</h3>
+                <table class="exception-table">
+                    <thead>
+                        <tr>
+                            <th>异常情况</th>
+                            <th>检测方式</th>
+                            <th>处理方案</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>邮箱格式错误</td>
+                            <td>正则校验</td>
+                            <td>前端实时提示，阻止提交</td>
+                            <td><span class="status-badge notify">实时校验</span></td>
+                        </tr>
+                        <tr>
+                            <td>邮箱为空</td>
+                            <td>非空校验</td>
+                            <td>提示必须填写邮箱</td>
+                            <td><span class="status-badge notify">必填</span></td>
+                        </tr>
+                        <tr>
+                            <td>同一邮箱频繁下单</td>
+                            <td>IP+邮箱频率限制</td>
+                            <td>限制5分钟内最多3单</td>
+                            <td><span class="status-badge pending">限流</span></td>
+                        </tr>
+                        <tr>
+                            <td>支付成功但邮件发送失败</td>
+                            <td>邮件服务异常</td>
+                            <td>记录日志，后台手动补发</td>
+                            <td><span class="status-badge retry">补偿</span></td>
+                        </tr>
+                        <tr>
+                            <td>游客查单验证码错误</td>
+                            <td>验证码校验</td>
+                            <td>提示错误，最多3次</td>
+                            <td><span class="status-badge retry">重试</span></td>
+                        </tr>
+                        <tr>
+                            <td>查单邮箱无订单</td>
+                            <td>数据库查询</td>
+                            <td>提示"该邮箱暂无订单"</td>
+                            <td><span class="status-badge notify">提示</span></td>
+                        </tr>
+                        <tr>
+                            <td>游客订单超时未支付</td>
+                            <td>定时任务扫描</td>
+                            <td>30分钟后自动关闭订单</td>
+                            <td><span class="status-badge rollback">自动关闭</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 图例 -->
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background:#22c55e"></div>开始/成功</div>
+            <div class="legend-item"><div class="legend-color" style="background:#ef4444"></div>结束/失败</div>
+            <div class="legend-item"><div class="legend-color" style="background:#3b82f6"></div>处理步骤</div>
+            <div class="legend-item"><div class="legend-color" style="background:#f59e0b"></div>判断节点</div>
+            <div class="legend-item"><div class="legend-color" style="background:#06b6d4"></div>用户操作</div>
+            <div class="legend-item"><div class="legend-color" style="background:#8b5cf6"></div>API调用</div>
+            <div class="legend-item"><div class="legend-color" style="background:#ec4899"></div>第三方服务</div>
+            <div class="legend-item"><div class="legend-color" style="background:#f97316"></div>游客模式</div>
+            <div class="legend-item"><div class="legend-color" style="background:#14b8a6"></div>重置密码</div>
+        </div>
+    </div>
+</body>
+</html>

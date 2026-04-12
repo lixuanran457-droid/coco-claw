@@ -1,0 +1,13 @@
+# 临时文件
+*~
+*.tmp
+
+# Excel 临时文件
+~$*.xlsx
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
