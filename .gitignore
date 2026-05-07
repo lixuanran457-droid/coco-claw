@@ -11,3 +11,11 @@
 # IDE
 .vscode/
 .idea/
+
+# Node.js
+node_modules/
+
+# Nuxt
+.nuxt/
+.output/
+dist/
